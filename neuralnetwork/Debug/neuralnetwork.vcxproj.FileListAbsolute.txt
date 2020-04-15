@@ -1,0 +1,2 @@
+C:\Users\tsuba\Documents\GitHub\NN\neuralnetwork\Debug\neuralnetwork.exe
+C:\Users\tsuba\Documents\GitHub\NN\neuralnetwork\Debug\neuralnetwork.pdb
