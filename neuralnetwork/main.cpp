@@ -12,12 +12,11 @@
 #define TDTMAX 6	//教師データ群の数
 #define INPUT 3		//入力の個数
 #define OUTPUT 1	//出力の個数
+#define LEARNING_TIMES 10000000	//学習回数の上限
 
 //関数のプロトタイプ宣言
 double sigmoid(double s);
-double diff(double (*func)(double, double), double x, double t);
-double loss_func(double x, double t);
-void learning(double t_in[], double t_out[],
+double learning(double t_in[], double t_out[],
 	int input, int output, int layer, int elenum,
 	double epsilon
 );
@@ -28,9 +27,10 @@ static double*** omega;	//重み
 int main(void) {
 	
 	int layer = LAYER, elenum = NUM, input = INPUT, output = OUTPUT;
-	double epsilon = 0.2;
+	double epsilon = 0.1;
 	double t_in[TDTMAX][INPUT] = { {0,0,0},{1,0,1},{1,1,1},{1,1,0},{1,0,0},{0,0,1} };	//教師データ入力
 	double t_out[TDTMAX][OUTPUT] = { {0},{0},{1},{0},{1},{1} };							//教師データ出力
+	double error;
 
 	//omegaのデータ領域確保
 	omega = (double***)calloc(layer, sizeof(double));
@@ -54,8 +54,14 @@ int main(void) {
 			}
 		}
 	}
-
-	learning(t_in[0], t_out[0], input, output, layer, elenum, epsilon);
+	
+	//学習
+	for (int i = 0; i < LEARNING_TIMES; i++) {
+		for (int j = 0; j < TDTMAX; j++) {
+			error = learning(t_in[j], t_out[j], input, output, layer, elenum, epsilon);
+		}
+		if (error < 1e-6) break;
+	}
 
 	//領域の解放
 	for (int i = 0; i < layer; i++) {
@@ -75,20 +81,16 @@ double sigmoid(double s) {
 	return 1 / (1 + exp(-s));
 }
 
-//2変数関数funcのxにおける微分係数を求める関数
-double diff(double (*func)(double, double), double x, double t) {
-	double delta = 1e-4;
-	return (func(x + delta, t) - func(x - delta, t)) / (2 * delta);
-}
-
-//損失関数
-//x: ニューロンへの入力，t: 出力の教師データ
-double loss_func(double x, double t) {
-	return pow(sigmoid(x) - t, 2);
-}
-
-//教師データを学習させ，重みomegaを決定する．epsilonは学習率．
-void learning(double t_in[], double t_out[], 
+/**********************************
+教師データを学習させ，重みomegaを決定する．
+t_in, t_out: 教師データ
+input, output: NNの入出力の個数
+layer: NNの層数
+elenum: 各層におけるニューロンの個数
+epsilon: 学習率
+戻り値: 教師データと出力の誤差
+***********************************/
+double learning(double t_in[], double t_out[], 
 	int input, int output, int layer, int elenum, 
 	double epsilon
 ) {
@@ -96,7 +98,7 @@ void learning(double t_in[], double t_out[],
 	double** u = (double**)calloc(layer - 1, sizeof(double));			//各ニューロンからの出力
 	double* y = (double*)calloc(output, sizeof(double));				//NNの出力
 	double b = 1;														//バイアス
-	double error;														//誤差
+	double error, error_out;											//誤差
 	double** dLdx = (double**)calloc(layer - 1, sizeof(double));		//逆伝播
 	double dLdx_sum = 0;
 	
@@ -156,6 +158,11 @@ void learning(double t_in[], double t_out[],
 		y[k] = sigmoid(y[k]);
 	}
 
+	//出力の誤差の計算
+	error_out = 0;
+	for (int i = 0; i < output; i++) {
+		error_out += pow(y[i] - t_out[i], 2);
+	}
 
 	//誤差逆伝播による重みの更新
 	//出力層
@@ -212,4 +219,6 @@ void learning(double t_in[], double t_out[],
 	free(u);
 	free(y);
 	free(dLdx);
+
+	return error_out;
 }
