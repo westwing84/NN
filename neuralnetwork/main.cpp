@@ -7,12 +7,13 @@
 #include <math.h>
 #include <time.h>
 
-#define LAYER 2		//NNの層数
+#define LAYER 3		//NNの層数
 #define NUM 4		//NNの素子数
 #define TDTMAX 6	//教師データ群の数
 #define INPUT 3		//入力の個数
 #define OUTPUT 1	//出力の個数
-#define LEARNING_TIMES 10000000	//学習回数の上限
+#define EPSILON 0.1	//学習率
+#define LEARNING_TIMES 1e7	//学習回数の上限
 
 //関数のプロトタイプ宣言
 double sigmoid(double s);
@@ -31,8 +32,8 @@ void transmission(double in[], double y[], int input, int output, int layer, int
 //変数宣言
 static double*** omega;	//重み
 //omega[i][j][k]: i層目のj番目のニューロンから(i+1)層目の(k+1)番目のニューロンへの枝の重み．
-//各要素数は，omega[layer][elenum+1][elenum]．elenum+1としているのはバイアスに対する重みも含んでいるため．
-//0層目は入力層，0番目のニューロンはバイアスとする．
+//各要素数は，omega[layer][elenum+1][elenum]．elenum+1としているのはバイアスも含んでいるため．
+//0層目は入力層．また，omega[i][0][k]はバイアスである．
 
 static double*** x;		//各ニューロンへの入力．バイアスを除く．
 //x[i][j][k]: i層目の(j+1)番目のニューロンから(i+1)層目の(k+1)番目のニューロンへの入力．
@@ -50,7 +51,7 @@ static double** dLdx;	//逆伝播
 int main(void) {
 	
 	int layer = LAYER, elenum = NUM, input = INPUT, output = OUTPUT;
-	double epsilon = 0.1;		//学習率
+	double epsilon = EPSILON;
 	double* dt_in, *dt_out;
 	double* y;		//NNの出力
 	double error;	//誤差
@@ -58,6 +59,14 @@ int main(void) {
 	double t_in[TDTMAX][INPUT] = { {0,0,0},{1,0,1},{1,1,1},{1,1,0},{1,0,0},{0,0,1} };
 	double t_out[TDTMAX][OUTPUT] = { {0},{0},{1},{0},{1},{1} };
 	
+	//各パラメータをキーボードから入力
+	printf("教師データをニューラルネットワークに学習させます．\n学習率を入力してください: ");
+	scanf_s("%lf", &epsilon);
+	printf("ニューラルネットワークの層数: ");
+	scanf_s("%d", &layer);
+	printf("各層の素子数: ");
+	scanf_s("%d", &elenum);
+
 	//omegaのデータ領域確保
 	omega = (double***)calloc(layer, sizeof(double));
 	for (int i = 0; i < layer; i++) {
@@ -90,7 +99,7 @@ int main(void) {
 	for (int i = 0; i < layer; i++) {
 		for (int j = 0; j < elenum + 1; j++) {
 			for (int k = 0; k < elenum; k++) {
-				omega[i][j][k] = (double)rand() / (double)(RAND_MAX + 1);
+				omega[i][j][k] = (double)rand() / (double)(RAND_MAX + 1) * 2 - 1;
 			}
 		}
 	}
@@ -103,8 +112,9 @@ int main(void) {
 		for (int j = 0; j < TDTMAX; j++) {
 			error += learning(t_in[j], t_out[j], y, input, output, layer, elenum, epsilon);
 		}
-		if (i % 1000 == 0) printf("%lf\n", error);
-		if (error < 1e-5) break;
+		error /= TDTMAX;
+		//if (i % 100000 == 0) printf("%lf\n", error);
+		if (error < 1e-3) break;
 	}
 	printf("学習が完了しました．\n");
 	command = 2;
@@ -187,11 +197,11 @@ double learning(
 	int elenum,			//各層におけるニューロンの個数
 	double epsilon		//学習率
 ) {
-	double b = 1;				//バイアス
+	double b = 1;				//バイアスに対する入力
 	double error, error_out;	//誤差
 	double dLdx_sum = 0;		//逆伝播の和
 
-	//順伝播により出力yを計算する
+	//順伝播により教師入力t_inに対する出力yを計算する
 	transmission(t_in, y, input, output, layer, elenum);
 
 	//出力の誤差の計算
