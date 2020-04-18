@@ -9,8 +9,6 @@
 #include <iostream>
 #include <fstream>
 #include <sstream>
-#include <random>
-
 using namespace std;
 
 #define LAYER 3		//NNの層数
@@ -19,7 +17,7 @@ using namespace std;
 #define INPUT 3		//入力の個数
 #define OUTPUT 1	//出力の個数
 #define EPSILON 0.1	//学習率
-#define LEARNING_TIMES 1e8	//学習回数の上限
+#define LEARNING_TIMES 1e7	//学習回数の上限
 
 //関数のプロトタイプ宣言
 double sigmoid(double s);
@@ -119,27 +117,16 @@ int main(void) {
 		dLdx[i] = (double*)calloc(elenum, sizeof(double));
 	}
 
-	//重みの初期値をXavierの初期値により決定
-	random_device seed;
-	mt19937 engine(seed());
-	double mu = 0, sig = pow(1.0 / (double)input, 0.5);
-	normal_distribution<> dist(mu, sig);	//平均0，標準偏差sqrt(1/(入力の個数))の正規分布
-	for (int i = 0; i < input; i++) {
-		for (int j = 0; j < elenum; j++) {
-			omega[0][i][j] = dist(engine);	//入力に対する重みを初期化
-			printf("%lf\n", omega[0][i][j]);
-		}
-	}
-
-	sig = pow(1.0 / (double)elenum, 0.5);
-	normal_distribution<> dist2(mu, sig);		//平均0，標準偏差sqrt(1/(素子数))の正規分布
-	for (int i = 1; i < layer; i++) {
-		for (int j = 0; j < elenum; j++) {
+	//重みの初期値を-1～1の乱数により決定
+	srand((unsigned)time(NULL));
+	for (int i = 0; i < layer; i++) {
+		for (int j = 0; j < elenum + 1; j++) {
 			for (int k = 0; k < elenum; k++) {
-				omega[i][j][k] = dist2(engine);	//中間層の重みを初期化
+				omega[i][j][k] = (double)rand() / (double)(RAND_MAX + 1) * 2 - 1;
 			}
 		}
 	}
+	
 	
 	//学習
 	printf("教師データを学習しています．\n");
@@ -149,7 +136,7 @@ int main(void) {
 			error += learning(t_in[j], t_out[j], y, input, output, layer, elenum, epsilon);
 		}
 		error /= TDTMAX;
-		if (i % 100000 == 0) printf("%lf\n", error);
+		//if (i % 100000 == 0) printf("%lf\n", error);
 		if (error < 1e-3) break;
 	}
 	printf("学習が完了しました．\n");
