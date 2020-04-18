@@ -6,6 +6,10 @@
 #include <stdlib.h>
 #include <math.h>
 #include <time.h>
+#include <iostream>
+#include <fstream>
+#include <sstream>
+using namespace std;
 
 #define LAYER 3		//NNの層数
 #define NUM 4		//NNの素子数
@@ -56,8 +60,27 @@ int main(void) {
 	double* y;		//NNの出力
 	double error;	//誤差
 	int command;
-	double t_in[TDTMAX][INPUT] = { {0,0,0},{1,0,1},{1,1,1},{1,1,0},{1,0,0},{0,0,1} };
-	double t_out[TDTMAX][OUTPUT] = { {0},{0},{1},{0},{1},{1} };
+	double t_in[TDTMAX][INPUT];
+	double t_out[TDTMAX][OUTPUT];
+
+	//教師データファイルオープン
+	ifstream ifs("data.csv");
+	if (!ifs) {
+		printf("教師データファイルを開けませんでした．\n");
+		return 0;
+	}
+
+	//教師データをt_inとt_outに読み込み
+	string str;
+	for (int i = 0; getline(ifs, str); i++) {
+		string tmp;
+		stringstream stream;
+		stream << str;
+		for (int j = 0; getline(stream, tmp, ','); j++) {
+			if (j < INPUT) t_in[i][j] = atof(tmp.c_str());
+			else t_out[i][j - INPUT] = atof(tmp.c_str());
+		}
+	}
 	
 	//各パラメータをキーボードから入力
 	printf("教師データをニューラルネットワークに学習させます．\n学習率を入力してください: ");
